@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# partykit cache
+.partykit/
+
 # production
 /build
 
@@ -32,6 +35,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+
+# local config files with credentials
+*.local
+credentials.json
 
 # vercel
 .vercel
