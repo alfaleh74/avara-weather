@@ -10,7 +10,6 @@ import Map, { Source, Layer, Popup } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MAP_CONFIG } from './constants.jsx';
 import PlaneIconProcessor from '../graphics/PlaneIconProcessor.jsx';
-import SpaceBackground from './SpaceBackground.jsx';
 
 /**
  * Main MapLibre map container with GPU-accelerated rendering
@@ -111,7 +110,7 @@ const MapLibreContainer = memo(({
     setSelectedFlight(null);
   }, []);
 
-  // Add custom plane icon and apply transparent background for starfield
+  // Add custom plane icon and configure map appearance
   useEffect(() => {
     const map = mapRef.current?.getMap();
     if (!map) return;
@@ -125,13 +124,9 @@ const MapLibreContainer = memo(({
       setIconReady(true);
     };
 
-    const applySpaceBackground = () => {
+    const configureMapAppearance = () => {
       if (map.isStyleLoaded()) {
-        // Transparent map background so Three.js space shows through
-        try {
-          map.setPaintProperty('background', 'background-color', 'rgba(0, 0, 0, 0)');
-        } catch {}
-        // Remove any sky layer if present to avoid built-in atmosphere
+        // Remove any sky layer if present
         try {
           const style = map.getStyle();
           const skyLayer = style?.layers?.find(l => l.type === 'sky' || l.id === 'sky');
@@ -139,17 +134,17 @@ const MapLibreContainer = memo(({
             map.removeLayer(skyLayer.id);
           }
         } catch {}
-        console.log('[MapLibre] ✓ Transparent background + no sky');
+        console.log('[MapLibre] ✓ Map appearance configured');
       }
     };
 
     if (map.isStyleLoaded()) {
       if (bitmapReady && planeBitmapRef.current) addIconFromBitmap();
-      applySpaceBackground();
+      configureMapAppearance();
     } else {
       map.once('style.load', () => {
         if (bitmapReady && planeBitmapRef.current) addIconFromBitmap();
-        applySpaceBackground();
+        configureMapAppearance();
       });
     }
 
@@ -159,7 +154,7 @@ const MapLibreContainer = memo(({
           console.log('[MapLibre] Style changed, re-adding plane icon');
           addIconFromBitmap();
         }
-        applySpaceBackground();
+        configureMapAppearance();
       }
     };
 
@@ -177,11 +172,8 @@ const MapLibreContainer = memo(({
 
   return (
     <div className="w-full h-full relative overflow-hidden bg-black">
-      {/* Three.js Space Background */}
-      <SpaceBackground />
-
-      {/* MapLibre Globe layered above Three.js; pointer events disabled in free-cam */}
-      <div className="absolute inset-0 z-10">
+      {/* MapLibre Map Container */}
+      <div className="absolute inset-0">
         <Map
           ref={mapRef}
           {...viewState}
