@@ -32,7 +32,8 @@ export const MapInfoOverlay = memo(({ totalFlights, lastUpdate, dataSource }) =>
       className="absolute top-4 left-4 bg-zinc-900/90 backdrop-blur-sm text-white px-6 py-4 rounded-lg shadow-xl border border-zinc-700"
       style={{ zIndex: Z_INDEX.OVERLAY }}
     >
-      <h2 className="text-xl font-bold mb-2">Live Flight Tracker</h2>
+      <h2 className="text-xl font-bold mb-2">BETA - Avara Flight Tracker</h2>
+      <h2 className="text-xl font-bold mb-2">Version 11/24/25</h2>
       <div className="space-y-1 text-sm">
         <p>
           <span className="text-zinc-400">Total Flights:</span>{' '}
@@ -45,9 +46,6 @@ export const MapInfoOverlay = memo(({ totalFlights, lastUpdate, dataSource }) =>
         <p>
           <span className="text-zinc-400">Status:</span>{' '}
           <span className={`font-semibold ${sourceBadge.color}`}>{sourceBadge.text}</span>
-        </p>
-        <p className="text-xs text-zinc-500 mt-2">
-          Data from OpenSky Network
         </p>
       </div>
     </div>

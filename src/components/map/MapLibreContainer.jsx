@@ -34,7 +34,18 @@ const MapLibreContainer = memo(({
     bearing: Number.isFinite(MAP_CONFIG.INITIAL_BEARING) ? MAP_CONFIG.INITIAL_BEARING : 0
   });
 
-  const [freeCameraEnabled, setFreeCameraEnabled] = useState(false);
+  const [projection, setProjection] = useState('globe');
+  const [iconSizeMultiplier, setIconSizeMultiplier] = useState(1.0);
+
+  // Toggle projection between globe and 2D
+  const toggleProjection = useCallback(() => {
+    setProjection(prev => prev === 'globe' ? 'mercator' : 'globe');
+  }, []);
+
+  // Handle icon size change
+  const handleIconSizeChange = useCallback((e) => {
+    setIconSizeMultiplier(parseFloat(e.target.value));
+  }, []);
 
   // Update viewport state
   const handleMove = useCallback((evt) => {
@@ -158,16 +169,6 @@ const MapLibreContainer = memo(({
     };
   }, [bitmapReady]);
 
-  // Keyboard toggle for free camera (F)
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.code === 'KeyF') {
-        setFreeCameraEnabled((prev) => !prev);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
 
   // Log stats for debugging
   useEffect(() => {
@@ -177,7 +178,7 @@ const MapLibreContainer = memo(({
   return (
     <div className="w-full h-full relative overflow-hidden bg-black">
       {/* Three.js Space Background */}
-      <SpaceBackground freeCameraEnabled={freeCameraEnabled} />
+      <SpaceBackground />
 
       {/* MapLibre Globe layered above Three.js; pointer events disabled in free-cam */}
       <div className="absolute inset-0 z-10">
@@ -187,20 +188,20 @@ const MapLibreContainer = memo(({
           onMove={handleMove}
           onClick={handleMapClick}
           mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
-          style={{ width: '100%', height: '100%', pointerEvents: freeCameraEnabled ? 'none' : 'auto' }}
+          style={{ width: '100%', height: '100%' }}
           attributionControl={false}
-          projection="globe"
+          projection={projection}
           minZoom={0}
           maxZoom={20}
           minPitch={0}
           maxPitch={85}
-          dragRotate={!freeCameraEnabled}
-          dragPan={!freeCameraEnabled}
-          scrollZoom={!freeCameraEnabled}
-          touchZoomRotate={!freeCameraEnabled}
-          touchPitch={!freeCameraEnabled}
-          keyboard={!freeCameraEnabled}
-          doubleClickZoom={!freeCameraEnabled}
+          dragRotate={true}
+          dragPan={true}
+          scrollZoom={true}
+          touchZoomRotate={true}
+          touchPitch={true}
+          keyboard={true}
+          doubleClickZoom={true}
           antialias={true}
           interactiveLayerIds={['flights-layer']}
         >
@@ -248,11 +249,11 @@ const MapLibreContainer = memo(({
                   'interpolate',
                   ['linear'],
                   ['zoom'],
-                  2, 0.02,
-                  4, 0.05,
-                  6, 0.08,
-                  10, 0.1,
-                  12, 0.15
+                  2, 0.02 * iconSizeMultiplier,
+                  4, 0.05 * iconSizeMultiplier,
+                  6, 0.08 * iconSizeMultiplier,
+                  10, 0.1 * iconSizeMultiplier,
+                  12, 0.15 * iconSizeMultiplier
                 ],
                 'icon-rotate': ['get', 'rotation'],
                 'icon-rotation-alignment': 'map',
@@ -300,10 +301,35 @@ const MapLibreContainer = memo(({
         }}
       />
 
-      {/* HUD */}
-      <div className="absolute left-3 bottom-3 z-20 text-xs text-white/90 select-none">
-        <div className="px-2 py-1 rounded bg-black/50 border border-white/10">
-          {freeCameraEnabled ? 'Free Camera: ON (press F to return to map)' : 'Press F for Free Camera'}
+      {/* Projection Toggle Button */}
+      <button
+        onClick={toggleProjection}
+        className="absolute right-3 bottom-20 z-20 px-4 py-2 rounded-lg bg-black/70 hover:bg-black/90 border border-white/20 hover:border-white/40 text-white text-sm font-medium transition-all duration-200 select-none shadow-lg"
+        title="Toggle between 2D and Globe view"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🌍</span>
+          <span>{projection === 'globe' ? '2D View' : 'Globe View'}</span>
+        </div>
+      </button>
+
+      {/* Icon Size Slider */}
+      <div className="absolute right-3 bottom-3 z-20 px-4 py-3 rounded-lg bg-black/70 border border-white/20 text-white text-sm select-none shadow-lg">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-medium whitespace-nowrap">✈️ Icon Size:</span>
+          <input
+            type="range"
+            min="0.5"
+            max="3"
+            step="0.1"
+            value={iconSizeMultiplier}
+            onChange={handleIconSizeChange}
+            className="w-32 h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
+            style={{
+              accentColor: '#60A5FA'
+            }}
+          />
+          <span className="text-xs font-mono text-blue-400 w-8">{iconSizeMultiplier.toFixed(1)}x</span>
         </div>
       </div>
     </div>
