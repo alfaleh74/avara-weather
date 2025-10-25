@@ -4,6 +4,10 @@ import { NextResponse } from 'next/server';
  * Debug endpoint to check environment variables
  * This helps diagnose why auth works locally but not on Vercel
  */
+
+// Force Node.js runtime
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 export async function GET() {
   const clientId = process.env.OPENSKY_CLIENT_ID;
   const clientSecret = process.env.OPENSKY_CLIENT_SECRET;

@@ -4,6 +4,10 @@ import { NextResponse } from 'next/server';
  * Complete credential verification endpoint
  * Tests everything step-by-step
  */
+
+// Force Node.js runtime for better external API compatibility
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 export async function GET() {
   const results = {
     timestamp: new Date().toISOString(),

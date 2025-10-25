@@ -6,6 +6,10 @@ import { getAuthHeaders, getAccessToken } from '@/lib/opensky-oauth';
  * This endpoint tests the authentication without affecting rate limits
  * Now uses OAuth2 Client Credentials Flow instead of Basic Auth
  */
+
+// Force Node.js runtime for better external API compatibility
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const clientId = process.env.OPENSKY_CLIENT_ID;

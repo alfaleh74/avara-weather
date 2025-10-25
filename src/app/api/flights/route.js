@@ -16,6 +16,10 @@ import { getAuthHeaders } from '@/lib/opensky-oauth';
  * - lomax: maximum longitude (optional)
  */
 
+// Force Node.js runtime for better external API compatibility
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);

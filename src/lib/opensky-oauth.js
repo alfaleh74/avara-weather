@@ -41,15 +41,36 @@ export async function getAccessToken() {
       client_secret: clientSecret.trim()
     });
 
-    const response = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Avara-Flight-Tracker/2.0'
-      },
-      body: params.toString(),
-      cache: 'no-store'
-    });
+    // Add timeout and retry logic for Vercel serverless environment
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    
+    let response;
+    try {
+      response = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'Avara-Flight-Tracker/2.0',
+          'Accept': 'application/json'
+        },
+        body: params.toString(),
+        cache: 'no-store',
+        signal: controller.signal,
+        // Additional options for better compatibility
+        keepalive: true
+      });
+      clearTimeout(timeoutId);
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      console.error('[OpenSky OAuth2] Fetch failed:', fetchError.message);
+      console.error('[OpenSky OAuth2] Error details:', {
+        name: fetchError.name,
+        code: fetchError.code,
+        cause: fetchError.cause
+      });
+      throw new Error(`Network request failed: ${fetchError.message}. This may be a temporary connectivity issue.`);
+    }
 
     if (!response.ok) {
       const errorText = await response.text();

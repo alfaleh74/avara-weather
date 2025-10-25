@@ -4,6 +4,10 @@ import { NextResponse } from 'next/server';
  * Detailed OAuth2 debugging endpoint
  * Shows exactly what's happening during token acquisition
  */
+
+// Force Node.js runtime for better external API compatibility
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 export async function GET() {
   const clientId = process.env.OPENSKY_CLIENT_ID;
   const clientSecret = process.env.OPENSKY_CLIENT_SECRET;
