@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getAuthHeaders } from '@/lib/opensky-oauth';
+import { getCachedFlights, hasFreshCache, setCachedFlights } from '@/lib/flight-cache';
 
 /**
- * OpenSky Network API endpoint - simplified
- * Fetches all current flight states from the OpenSky Network
- * Returns all data in single JSON response
+ * OpenSky Network API endpoint - with caching
+ * Serves flight data from cache updated by background cron job
+ * Falls back to direct API fetch if cache is unavailable
  * 
  * API Documentation: https://openskynetwork.github.io/opensky-api/rest.html
  * Authentication: Uses OAuth2 Client Credentials Flow
@@ -14,11 +15,8 @@ import { getAuthHeaders } from '@/lib/opensky-oauth';
  * - lomin: minimum longitude (optional)
  * - lamax: maximum latitude (optional)
  * - lomax: maximum longitude (optional)
+ * - force: force fresh fetch (bypasses cache)
  */
-
-// Force Node.js runtime for better external API compatibility
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   try {
@@ -29,12 +27,55 @@ export async function GET(request) {
     const lomin = searchParams.get('lomin');
     const lamax = searchParams.get('lamax');
     const lomax = searchParams.get('lomax');
+    const forceRefresh = searchParams.get('force') === 'true';
     
+    // Check if client requested bounding box filtering
+    const hasBoundingBox = lamin && lomin && lamax && lomax;
+    
+    // Try to serve from cache first (if no bounding box and no force refresh)
+    if (!hasBoundingBox && !forceRefresh) {
+      const cachedData = getCachedFlights();
+      
+      if (cachedData && hasFreshCache()) {
+        console.log(`[Flight API] Serving from cache (${cachedData.count} flights, age: ${cachedData.cacheAgeSeconds}s)`);
+        
+        return NextResponse.json(
+          {
+            flights: cachedData.flights,
+            time: cachedData.time,
+            count: cachedData.count,
+            source: cachedData.source,
+            cached: true,
+            cacheAge: cachedData.cacheAgeSeconds,
+            fetchedAt: new Date(cachedData.cachedAt).toISOString()
+          },
+          {
+            headers: {
+              'Cache-Control': 'public, max-age=5, stale-while-revalidate=10',
+              'X-Cache-Status': 'HIT'
+            }
+          }
+        );
+      }
+      
+      // Cache miss or stale - log it
+      if (cachedData) {
+        console.log('[Flight API] Cache exists but is stale, falling back to direct fetch');
+      } else {
+        console.log('[Flight API] No cache available, falling back to direct fetch');
+      }
+    } else if (hasBoundingBox) {
+      console.log('[Flight API] Bounding box requested, bypassing cache');
+    } else if (forceRefresh) {
+      console.log('[Flight API] Force refresh requested, bypassing cache');
+    }
+    
+    // Fallback: fetch directly from OpenSky API
     // Build the API URL
     let apiUrl = 'https://opensky-network.org/api/states/all';
     
     // Add bounding box parameters if all are provided
-    if (lamin && lomin && lamax && lomax) {
+    if (hasBoundingBox) {
       apiUrl += `?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
     }
     
@@ -42,14 +83,7 @@ export async function GET(request) {
     const headers = await getAuthHeaders();
     
     const hasAuth = headers.Authorization !== undefined;
-    if (hasAuth) {
-      console.log('[Flight API] Using OAuth2 authenticated access');
-    } else {
-      console.log('[Flight API] Using anonymous OpenSky access (rate limited to 100 requests/day)');
-    }
-    
-    // Fetch data from OpenSky Network API (no caching)
-    console.log('[Flight API] Fetching from OpenSky:', apiUrl);
+    console.log(`[Flight API] Fetching from OpenSky: ${apiUrl} (${hasAuth ? 'authenticated' : 'anonymous'})`);
     
     // Add timeout to prevent hanging requests
     const controller = new AbortController();
@@ -75,7 +109,6 @@ export async function GET(request) {
     // If unauthorized and we attempted OAuth2, try once to refresh token and retry
     if (response.status === 401 && hasAuth) {
       console.warn('[Flight API] Received 401, attempting token refresh and retry');
-      // Lazy import to avoid circular; clear cache and retry via helper
       const { clearTokenCache, getAuthHeaders: getHeaders } = await import('@/lib/opensky-oauth');
       clearTokenCache();
       const retryHeaders = await getHeaders();
@@ -136,17 +169,31 @@ export async function GET(request) {
       flight.latitude !== null
     ) : [];
     
-    // Return simple JSON response
+    // Cache the results if no bounding box (global fetch)
+    if (!hasBoundingBox) {
+      const cacheData = {
+        flights,
+        time: data.time,
+        count: flights.length,
+        source: hasAuth ? 'opensky-authenticated' : 'opensky-anonymous'
+      };
+      setCachedFlights(cacheData);
+    }
+    
+    // Return JSON response
     return NextResponse.json(
       {
         flights,
         time: data.time,
         count: flights.length,
-        source: hasAuth ? 'opensky-authenticated' : 'opensky-anonymous'
+        source: hasAuth ? 'opensky-authenticated' : 'opensky-anonymous',
+        cached: false,
+        fetchedAt: new Date().toISOString()
       },
       {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'X-Cache-Status': 'MISS'
         }
       }
     );

@@ -203,68 +203,39 @@ const MapLibreContainer = memo(({
           type="geojson"
           data={geojsonData}
         >
-          {/* Fallback circle layer while icon is loading */}
-          {!iconReady && (
-            <Layer
-              id="flights-fallback"
-              type="circle"
-              paint={{
-                'circle-radius': [
-                  'interpolate',
-                  ['linear'],
-                  ['zoom'],
-                  2, 1.5,
-                  7, 2.5,
-                  12, 3.5
-                ],
-                'circle-color': '#60A5FA',
-                'circle-opacity': [
-                  'interpolate',
-                  ['linear'],
-                  ['zoom'],
-                  2, 0.7,
-                  7, 0.9,
-                  12, 1
-                ]
-              }}
-            />
-          )}
-
-          {/* Symbol layer once image is ready */}
-          {iconReady && (
-            <Layer
-              id="flights-layer"
-              type="symbol"
-              layout={{
-                'icon-image': 'plane-icon',
-                'icon-size': [
-                  'interpolate',
-                  ['linear'],
-                  ['zoom'],
-                  2, 0.02 * iconSizeMultiplier,
-                  4, 0.05 * iconSizeMultiplier,
-                  6, 0.08 * iconSizeMultiplier,
-                  10, 0.1 * iconSizeMultiplier,
-                  12, 0.15 * iconSizeMultiplier
-                ],
-                'icon-rotate': ['get', 'rotation'],
-                'icon-rotation-alignment': 'map',
-                'icon-allow-overlap': true,
-                'icon-ignore-placement': true,
-                'icon-pitch-alignment': 'map'
-              }}
-              paint={{
-                'icon-opacity': [
-                  'interpolate',
-                  ['linear'],
-                  ['zoom'],
-                  2, 0.8,
-                  7, 0.95,
-                  12, 1
-                ]
-              }}
-            />
-          )}
+          {/* Always use plane icon - no fallback */}
+          <Layer
+            id="flights-layer"
+            type="symbol"
+            layout={{
+              'icon-image': 'plane-icon',
+              'icon-size': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                2, 0.02 * iconSizeMultiplier,
+                4, 0.05 * iconSizeMultiplier,
+                6, 0.08 * iconSizeMultiplier,
+                10, 0.1 * iconSizeMultiplier,
+                12, 0.15 * iconSizeMultiplier
+              ],
+              'icon-rotate': ['get', 'rotation'],
+              'icon-rotation-alignment': 'map',
+              'icon-allow-overlap': true,
+              'icon-ignore-placement': true,
+              'icon-pitch-alignment': 'map'
+            }}
+            paint={{
+              'icon-opacity': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                2, 0.8,
+                7, 0.95,
+                12, 1
+              ]
+            }}
+          />
         </Source>
 
         {/* Popup for selected flight */}
