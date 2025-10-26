@@ -33,12 +33,12 @@ const formatHeading = (heading) => {
 
 const getPositionSource = (source) => {
   const sources = {
-    0: 'ADS-B',
-    1: 'ASTERIX',
-    2: 'MLAT',
-    3: 'FLARM'
+    0: 'ADS-B (Automatic Dependent Surveillance-Broadcast)',
+    1: 'ASTERIX (All Purpose Structured Eurocontrol Surveillance)',
+    2: 'MLAT (Multilateration)',
+    3: 'FLARM (Flight Alarm)'
   };
-  return sources[source] || 'Unknown';
+  return sources[source] || `Unknown (${source})`;
 };
 
 // Memoized InfoRow component
@@ -62,11 +62,20 @@ const FlightInfoPanel = memo(function FlightInfoPanel({ flight, onClose }) {
       geoAltitude: formatAltitude(flight.geo_altitude),
       heading: formatHeading(flight.true_track),
       verticalRate: formatVerticalRate(flight.vertical_rate),
-      lastContact: new Date(flight.last_contact * 1000).toLocaleTimeString(),
-      positionTime: flight.time_position ? new Date(flight.time_position * 1000).toLocaleTimeString() : null,
+      lastContact: flight.last_contact ? new Date(flight.last_contact * 1000).toLocaleString() : 'N/A',
+      lastContactUnix: flight.last_contact || 'N/A',
+      positionTime: flight.time_position ? new Date(flight.time_position * 1000).toLocaleString() : null,
+      positionTimeUnix: flight.time_position || 'N/A',
       positionSource: getPositionSource(flight.position_source),
-      latitude: flight.latitude?.toFixed(4) + '°',
-      longitude: flight.longitude?.toFixed(4) + '°'
+      latitude: flight.latitude != null ? flight.latitude.toFixed(4) + '°' : 'N/A',
+      latitudeRaw: flight.latitude != null ? flight.latitude.toFixed(6) : 'N/A',
+      longitude: flight.longitude != null ? flight.longitude.toFixed(4) + '°' : 'N/A',
+      longitudeRaw: flight.longitude != null ? flight.longitude.toFixed(6) : 'N/A',
+      sensors: flight.sensors ? (Array.isArray(flight.sensors) ? flight.sensors.join(', ') : String(flight.sensors)) : 'N/A',
+      spi: flight.spi !== null && flight.spi !== undefined ? (flight.spi ? 'Yes (Ident Active)' : 'No') : 'N/A',
+      velocityRaw: flight.velocity != null ? `${flight.velocity.toFixed(2)} m/s` : 'N/A',
+      trueTrackRaw: flight.true_track != null ? `${flight.true_track.toFixed(2)}°` : 'N/A',
+      verticalRateRaw: flight.vertical_rate != null ? `${flight.vertical_rate.toFixed(2)} m/s` : 'N/A'
     };
   }, [flight]);
 
@@ -102,9 +111,11 @@ const FlightInfoPanel = memo(function FlightInfoPanel({ flight, onClose }) {
 
         {/* Basic Info */}
         <div className="space-y-3">
-          <InfoRow label="ICAO 24-bit Address" value={flight.icao24?.toUpperCase()} />
-          <InfoRow label="Origin Country" value={flight.origin_country} />
-          {flight.squawk && <InfoRow label="Squawk" value={flight.squawk} />}
+          <InfoRow label="ICAO 24-bit Address" value={flight.icao24?.toUpperCase() || 'N/A'} />
+          <InfoRow label="Origin Country" value={flight.origin_country || 'N/A'} />
+          <InfoRow label="Squawk Code" value={flight.squawk || 'N/A'} />
+          <InfoRow label="SPI" value={formattedValues.spi} />
+          <InfoRow label="On Ground Status" value={flight.on_ground ? 'Yes' : 'No'} />
         </div>
 
         {/* Position Info */}
@@ -123,12 +134,10 @@ const FlightInfoPanel = memo(function FlightInfoPanel({ flight, onClose }) {
               label="Barometric Altitude" 
               value={formattedValues.baroAltitude} 
             />
-            {flight.geo_altitude !== null && flight.geo_altitude !== flight.baro_altitude && (
-              <InfoRow 
-                label="Geometric Altitude" 
-                value={formattedValues.geoAltitude} 
-              />
-            )}
+            <InfoRow 
+              label="Geometric Altitude" 
+              value={formattedValues.geoAltitude} 
+            />
           </div>
         </div>
 
@@ -159,15 +168,60 @@ const FlightInfoPanel = memo(function FlightInfoPanel({ flight, onClose }) {
               label="Last Contact" 
               value={formattedValues.lastContact} 
             />
-            {formattedValues.positionTime && (
-              <InfoRow 
-                label="Position Time" 
-                value={formattedValues.positionTime} 
-              />
-            )}
+            <InfoRow 
+              label="Last Contact (Unix)" 
+              value={formattedValues.lastContactUnix} 
+            />
+            <InfoRow 
+              label="Position Time" 
+              value={formattedValues.positionTime || 'N/A'} 
+            />
+            <InfoRow 
+              label="Position Time (Unix)" 
+              value={formattedValues.positionTimeUnix} 
+            />
             <InfoRow 
               label="Position Source" 
               value={formattedValues.positionSource} 
+            />
+            <InfoRow 
+              label="Sensor(s)" 
+              value={formattedValues.sensors} 
+            />
+          </div>
+        </div>
+
+        {/* Raw Data Values */}
+        <div className="pt-3 border-t border-zinc-700">
+          <h4 className="text-sm font-semibold text-zinc-400 mb-3 uppercase tracking-wide">Raw Data</h4>
+          <div className="space-y-3">
+            <InfoRow 
+              label="Latitude (Precise)" 
+              value={formattedValues.latitudeRaw} 
+            />
+            <InfoRow 
+              label="Longitude (Precise)" 
+              value={formattedValues.longitudeRaw} 
+            />
+            <InfoRow 
+              label="Velocity (m/s)" 
+              value={formattedValues.velocityRaw} 
+            />
+            <InfoRow 
+              label="True Track (degrees)" 
+              value={formattedValues.trueTrackRaw} 
+            />
+            <InfoRow 
+              label="Vertical Rate (m/s)" 
+              value={formattedValues.verticalRateRaw} 
+            />
+            <InfoRow 
+              label="Baro Altitude (m)" 
+              value={flight.baro_altitude != null ? `${flight.baro_altitude.toFixed(2)} m` : 'N/A'} 
+            />
+            <InfoRow 
+              label="Geo Altitude (m)" 
+              value={flight.geo_altitude != null ? `${flight.geo_altitude.toFixed(2)} m` : 'N/A'} 
             />
           </div>
         </div>

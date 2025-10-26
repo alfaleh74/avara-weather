@@ -24,6 +24,7 @@ const MapLibreContainer = memo(({
   const [iconReady, setIconReady] = useState(false);
   const planeBitmapRef = useRef(null);
   const [bitmapReady, setBitmapReady] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
   const [viewState, setViewState] = useState({
     longitude: MAP_CONFIG.INITIAL_CENTER[1],
     latitude: MAP_CONFIG.INITIAL_CENTER[0],
@@ -32,6 +33,13 @@ const MapLibreContainer = memo(({
     pitch: Number.isFinite(MAP_CONFIG.INITIAL_PITCH) ? MAP_CONFIG.INITIAL_PITCH : 0,
     bearing: Number.isFinite(MAP_CONFIG.INITIAL_BEARING) ? MAP_CONFIG.INITIAL_BEARING : 0
   });
+
+  // Stable callback for when plane icon is ready
+  const handlePlaneIconReady = useCallback((bitmap) => {
+    console.log('[MapLibre] handlePlaneIconReady called with bitmap:', bitmap.width, 'x', bitmap.height);
+    planeBitmapRef.current = bitmap;
+    setBitmapReady(true);
+  }, []);
 
   const [projection, setProjection] = useState('globe');
   const [iconSizeMultiplier, setIconSizeMultiplier] = useState(1.0);
@@ -79,6 +87,9 @@ const MapLibreContainer = memo(({
     const map = mapRef.current?.getMap();
     if (!map) return;
 
+    // Only query if the layer exists (i.e., icon is ready)
+    if (!iconReady || !map.getLayer('flights-layer')) return;
+
     const features = map.queryRenderedFeatures(event.point, {
       layers: ['flights-layer']
     });
@@ -103,7 +114,7 @@ const MapLibreContainer = memo(({
         onFlightSelect(flight);
       }
     }
-  }, [onFlightSelect]);
+  }, [iconReady, onFlightSelect]);
 
   // Handle popup close
   const handlePopupClose = useCallback(() => {
@@ -113,47 +124,57 @@ const MapLibreContainer = memo(({
   // Add custom plane icon and configure map appearance
   useEffect(() => {
     const map = mapRef.current?.getMap();
-    if (!map) return;
+    if (!map || !mapReady || !bitmapReady || !planeBitmapRef.current) {
+      console.log('[MapLibre] Waiting... map:', !!map, 'mapReady:', mapReady, 'bitmapReady:', bitmapReady, 'bitmap:', !!planeBitmapRef.current);
+      return;
+    }
 
     const addIconFromBitmap = () => {
-      if (!planeBitmapRef.current) return;
       if (!map.hasImage('plane-icon')) {
-        map.addImage('plane-icon', planeBitmapRef.current, { pixelRatio: 2, sdf: false });
-        console.log('[MapLibre] ✓ Plane ImageBitmap added to map');
+        try {
+          map.addImage('plane-icon', planeBitmapRef.current, { pixelRatio: 2, sdf: false });
+          console.log('[MapLibre] ✓ Plane ImageBitmap added to map');
+          setIconReady(true);
+        } catch (error) {
+          console.error('[MapLibre] Failed to add plane icon:', error);
+        }
+      } else {
+        console.log('[MapLibre] ✓ Plane icon already exists');
+        setIconReady(true);
       }
-      setIconReady(true);
     };
 
     const configureMapAppearance = () => {
+      // Remove any sky layer if present
+      try {
+        const style = map.getStyle();
+        const skyLayer = style?.layers?.find(l => l.type === 'sky' || l.id === 'sky');
+        if (skyLayer && map.getLayer(skyLayer.id)) {
+          map.removeLayer(skyLayer.id);
+        }
+      } catch {}
+    };
+
+    const tryAddIcon = () => {
       if (map.isStyleLoaded()) {
-        // Remove any sky layer if present
-        try {
-          const style = map.getStyle();
-          const skyLayer = style?.layers?.find(l => l.type === 'sky' || l.id === 'sky');
-          if (skyLayer && map.getLayer(skyLayer.id)) {
-            map.removeLayer(skyLayer.id);
-          }
-        } catch {}
-        console.log('[MapLibre] ✓ Map appearance configured');
+        addIconFromBitmap();
+        configureMapAppearance();
+      } else {
+        console.log('[MapLibre] Waiting for style to load...');
+        map.once('style.load', () => {
+          console.log('[MapLibre] Style loaded, adding icon now');
+          addIconFromBitmap();
+          configureMapAppearance();
+        });
       }
     };
 
-    if (map.isStyleLoaded()) {
-      if (bitmapReady && planeBitmapRef.current) addIconFromBitmap();
-      configureMapAppearance();
-    } else {
-      map.once('style.load', () => {
-        if (bitmapReady && planeBitmapRef.current) addIconFromBitmap();
-        configureMapAppearance();
-      });
-    }
+    tryAddIcon();
 
     const handleStyleData = () => {
-      if (map.isStyleLoaded()) {
-        if ((bitmapReady && planeBitmapRef.current) && !map.hasImage('plane-icon')) {
-          console.log('[MapLibre] Style changed, re-adding plane icon');
-          addIconFromBitmap();
-        }
+      if (map.isStyleLoaded() && !map.hasImage('plane-icon')) {
+        console.log('[MapLibre] Style changed, re-adding plane icon');
+        addIconFromBitmap();
         configureMapAppearance();
       }
     };
@@ -162,7 +183,7 @@ const MapLibreContainer = memo(({
     return () => {
       map.off('styledata', handleStyleData);
     };
-  }, [bitmapReady]);
+  }, [mapReady, bitmapReady]);
 
 
   // Log stats for debugging
@@ -172,6 +193,18 @@ const MapLibreContainer = memo(({
 
   return (
     <div className="w-full h-full relative overflow-hidden bg-black">
+      {/* Loading indicator while plane icon loads */}
+      {!iconReady && (
+        <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+          <div className="bg-black/80 backdrop-blur-sm px-6 py-4 rounded-lg border border-white/20">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              <span className="text-white text-sm font-medium">Loading plane icons...</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* MapLibre Map Container */}
       <div className="absolute inset-0">
         <Map
@@ -179,6 +212,7 @@ const MapLibreContainer = memo(({
           {...viewState}
           onMove={handleMove}
           onClick={handleMapClick}
+          onLoad={() => setMapReady(true)}
           mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
           style={{ width: '100%', height: '100%' }}
           attributionControl={false}
@@ -197,41 +231,14 @@ const MapLibreContainer = memo(({
           antialias={true}
           interactiveLayerIds={['flights-layer']}
         >
-        {/* GPU-accelerated GeoJSON layer - renders ALL flights efficiently */}
-        <Source
-          id="flights-source"
-          type="geojson"
-          data={geojsonData}
-        >
-          {/* Fallback circle layer while icon is loading */}
-          {!iconReady && (
-            <Layer
-              id="flights-fallback"
-              type="circle"
-              paint={{
-                'circle-radius': [
-                  'interpolate',
-                  ['linear'],
-                  ['zoom'],
-                  2, 1.5,
-                  7, 2.5,
-                  12, 3.5
-                ],
-                'circle-color': '#60A5FA',
-                'circle-opacity': [
-                  'interpolate',
-                  ['linear'],
-                  ['zoom'],
-                  2, 0.7,
-                  7, 0.9,
-                  12, 1
-                ]
-              }}
-            />
-          )}
-
-          {/* Symbol layer once image is ready */}
-          {iconReady && (
+        {/* GPU-accelerated GeoJSON layer - only render when plane icon is ready */}
+        {iconReady && (
+          <Source
+            id="flights-source"
+            type="geojson"
+            data={geojsonData}
+          >
+            {/* Symbol layer with plane icons */}
             <Layer
               id="flights-layer"
               type="symbol"
@@ -264,8 +271,8 @@ const MapLibreContainer = memo(({
                 ]
               }}
             />
-          )}
-        </Source>
+          </Source>
+        )}
 
         {/* Popup for selected flight */}
         {selectedFlight && (
@@ -276,7 +283,9 @@ const MapLibreContainer = memo(({
             onClose={handlePopupClose}
             closeButton={true}
             closeOnClick={false}
-            offset={[0, -15]}
+            offset={[0, -20]}
+            maxWidth="260px"
+            className="flight-popup"
           >
             <FlightPopupContent flight={selectedFlight} />
           </Popup>
@@ -287,10 +296,7 @@ const MapLibreContainer = memo(({
       {/* Process plane icon bitmap (outside Map so it persists) */}
       <PlaneIconProcessor
         src="/plane-icon.png"
-        onReady={(bitmap) => {
-          planeBitmapRef.current = bitmap;
-          setBitmapReady(true);
-        }}
+        onReady={handlePlaneIconReady}
       />
 
       {/* Projection Toggle Button */}
@@ -334,26 +340,124 @@ MapLibreContainer.displayName = 'MapLibreContainer';
 export default MapLibreContainer;
 
 /**
- * Flight popup content component
+ * Flight popup content component with enhanced styling
  */
 const FlightPopupContent = memo(({ flight }) => (
-  <div className="text-sm p-2" style={{ minWidth: '200px' }}>
-    <p className="font-bold text-base mb-2" style={{ color: '#fff' }}>
-      {flight.callsign || 'Unknown'}
-    </p>
-    <div className="space-y-1" style={{ color: '#ccc' }}>
-      <p><span className="font-semibold">ICAO24:</span> {flight.icao24}</p>
-      <p><span className="font-semibold">Country:</span> {flight.origin_country}</p>
-      {flight.velocity !== null && (
-        <p><span className="font-semibold">Speed:</span> {Math.round(flight.velocity * 3.6)} km/h</p>
-      )}
-      {flight.baro_altitude !== null && (
-        <p><span className="font-semibold">Altitude:</span> {Math.round(flight.baro_altitude)} m</p>
-      )}
-      <p><span className="font-semibold">Status:</span> {flight.on_ground ? '🛬 On Ground' : '✈️ In Flight'}</p>
+  <div 
+    className="text-sm" 
+    style={{ 
+      width: '100%', 
+      maxWidth: '260px',
+      borderRadius: '12px',
+      overflow: 'hidden',
+      boxShadow: '0 20px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(59, 130, 246, 0.5)',
+      border: '2px solid rgba(59, 130, 246, 0.3)'
+    }}
+  >
+    {/* Header with callsign */}
+    <div className="px-3 py-2.5" style={{ 
+      background: 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)',
+      borderBottom: '2px solid rgba(96, 165, 250, 0.3)'
+    }}>
+      <div className="flex items-center gap-1.5 mb-1">
+        <span className="text-xl">✈️</span>
+        <h3 className="font-bold text-lg text-white tracking-wide">
+          {flight.callsign || 'Unknown'}
+        </h3>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ 
+          backgroundColor: flight.on_ground ? '#f59e0b' : '#10b981',
+          color: '#000'
+        }}>
+          {flight.on_ground ? '🛬 On Ground' : '🛫 In Flight'}
+        </span>
+      </div>
     </div>
+
+    {/* Content */}
+    <div className="px-3 py-2.5 space-y-2.5" style={{ 
+      backgroundColor: '#1f2937',
+      color: '#e5e7eb'
+    }}>
+      {/* ICAO & Country Section */}
+      <div className="space-y-1.5">
+        <InfoItem 
+          icon="🔖" 
+          label="ICAO24" 
+          value={flight.icao24?.toUpperCase() || 'N/A'} 
+        />
+        <InfoItem 
+          icon="🌍" 
+          label="Country" 
+          value={flight.origin_country || 'Unknown'} 
+        />
+      </div>
+
+      {/* Divider */}
+      <div style={{ height: '1px', background: 'rgba(156, 163, 175, 0.2)' }} />
+
+      {/* Flight Data Section */}
+      <div className="space-y-1.5">
+        {flight.velocity !== null && (
+          <InfoItem 
+            icon="⚡" 
+            label="Speed" 
+            value={`${Math.round(flight.velocity * 3.6)} km/h`}
+            highlight={true}
+          />
+        )}
+        {flight.baro_altitude !== null && (
+          <InfoItem 
+            icon="📏" 
+            label="Altitude" 
+            value={`${Math.round(flight.baro_altitude).toLocaleString()} m`}
+            subvalue={`${Math.round(flight.baro_altitude * 3.28084).toLocaleString()} ft`}
+            highlight={true}
+          />
+        )}
+      </div>
+    </div>
+
+    {/* Footer gradient */}
+    <div style={{ 
+      height: '3px',
+      background: 'linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899)'
+    }} />
   </div>
 ));
 
 FlightPopupContent.displayName = 'FlightPopupContent';
+
+/**
+ * Info item component for popup
+ */
+const InfoItem = memo(({ icon, label, value, subvalue, highlight }) => (
+  <div className="flex items-start justify-between gap-2">
+    <div className="flex items-center gap-1.5 shrink-0">
+      <span className="text-sm">{icon}</span>
+      <span className="text-xs font-medium" style={{ color: '#9ca3af' }}>
+        {label}
+      </span>
+    </div>
+    <div className="text-right">
+      <div 
+        className="text-sm font-semibold" 
+        style={{ 
+          color: highlight ? '#60a5fa' : '#f3f4f6',
+          fontVariantNumeric: 'tabular-nums'
+        }}
+      >
+        {value}
+      </div>
+      {subvalue && (
+        <div className="text-xs leading-tight" style={{ color: '#9ca3af' }}>
+          {subvalue}
+        </div>
+      )}
+    </div>
+  </div>
+));
+
+InfoItem.displayName = 'InfoItem';
 
