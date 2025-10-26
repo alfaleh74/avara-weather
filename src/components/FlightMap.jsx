@@ -10,6 +10,7 @@ import { useCallback } from 'react';
 import { useFlightData } from '../hooks/useFlightData.js';
 import { LoadingState, ErrorState } from './map/LoadingState.jsx';
 import { MapInfoOverlay, RefreshButton } from './map/MapOverlay.jsx';
+import { AltitudeLegend } from './map/AltitudeLegend.jsx';
 import MapLibreContainer from './map/MapLibreContainer.jsx';
 import ErrorBoundary from './ErrorBoundary.jsx';
 
@@ -49,6 +50,8 @@ export default function FlightMap({ onFlightSelect }) {
         />
         
         <RefreshButton onRefresh={handleRefresh} />
+        
+        <AltitudeLegend />
         
         <MapLibreContainer
           flights={flights}

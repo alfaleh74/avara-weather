@@ -6,7 +6,7 @@ import { memo, useEffect, useRef } from 'react';
  * Optimized plane icon processor using native browser APIs
  * Loads and converts image to ImageBitmap for MapLibre
  */
-const PlaneIconProcessor = memo(function PlaneIconProcessor({ src = '/plane-icon.png', onReady }) {
+const PlaneIconProcessor = memo(function PlaneIconProcessor({ src = '/plane-img.png', onReady }) {
   const hasLoadedRef = useRef(false);
   const onReadyRef = useRef(onReady);
   const deliveredRef = useRef(false);

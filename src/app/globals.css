@@ -40,16 +40,17 @@ body {
 }
 
 .maplibregl-popup-close-button {
-  color: #fff;
+  color: #9ca3af;
   font-size: 20px;
   padding: 0;
   right: 6px;
   top: 6px;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 6px;
   transition: all 0.2s;
-  background-color: rgba(239, 68, 68, 0.9);
+  background-color: rgba(31, 41, 55, 0.9);
+  border: 1px solid rgba(75, 85, 99, 0.5);
   z-index: 20;
   display: flex;
   align-items: center;
@@ -57,7 +58,9 @@ body {
 }
 
 .maplibregl-popup-close-button:hover {
-  background-color: rgba(220, 38, 38, 1);
+  background-color: rgba(239, 68, 68, 0.9);
+  color: #fff;
+  border-color: rgba(239, 68, 68, 0.5);
   transform: scale(1.05);
 }
 
