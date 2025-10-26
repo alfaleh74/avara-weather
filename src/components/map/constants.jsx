@@ -39,5 +39,6 @@ export const Z_INDEX = {
 // API endpoints
 export const API_ENDPOINTS = {
   FLIGHTS: '/api/flights',
+  TRACKS: '/api/tracks',
 };
 
