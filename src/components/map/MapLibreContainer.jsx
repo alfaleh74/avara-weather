@@ -42,7 +42,7 @@ const MapLibreContainer = memo(({
   }, []);
 
   const [projection, setProjection] = useState('globe');
-  const [iconSizeMultiplier, setIconSizeMultiplier] = useState(1.0);
+  const [iconSizeMultiplier, setIconSizeMultiplier] = useState(3.6);
 
   // Toggle projection between globe and 2D
   const toggleProjection = useCallback(() => {
