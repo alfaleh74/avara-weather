@@ -2,8 +2,53 @@
 
 import { memo, useMemo } from 'react';
 
+// Icon components
+const PlaneIcon = () => (
+  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+  </svg>
+);
+
+const SpeedIcon = () => (
+  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 15.58 6.85l1.85-1.23A10 10 0 0 0 3.35 19a2 2 0 0 0 1.72 1h13.85a2 2 0 0 0 1.74-1 10 10 0 0 0-.27-10.44zm-9.79 6.84a2 2 0 0 0 2.83 0l5.66-8.49-8.49 5.66a2 2 0 0 0 0 2.83z"/>
+  </svg>
+);
+
+const AltitudeIcon = () => (
+  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+    <path d="M2 17l10 5 10-5"/>
+    <path d="M2 12l10 5 10-5"/>
+  </svg>
+);
+
+const LocationIcon = () => (
+  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z"/>
+  </svg>
+);
+
+const CountryIcon = () => (
+  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/>
+  </svg>
+);
+
+const IcaoIcon = () => (
+  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+  </svg>
+);
+
 // Memoize formatting functions
 const formatSpeed = (speedMs) => {
+  if (speedMs === null) return 'N/A';
+  const kmh = Math.round(speedMs * 3.6);
+  return `${kmh} km/h`;
+};
+
+const formatSpeedDetailed = (speedMs) => {
   if (speedMs === null) return 'N/A';
   const kmh = Math.round(speedMs * 3.6);
   const knots = Math.round(speedMs * 1.94384);
@@ -14,7 +59,20 @@ const formatAltitude = (altitudeM) => {
   if (altitudeM === null) return 'N/A';
   const meters = Math.round(altitudeM);
   const feet = Math.round(altitudeM * 3.28084);
+  return `${meters.toLocaleString()} m`;
+};
+
+const formatAltitudeDetailed = (altitudeM) => {
+  if (altitudeM === null) return 'N/A';
+  const meters = Math.round(altitudeM);
+  const feet = Math.round(altitudeM * 3.28084);
   return `${meters} m (${feet.toLocaleString()} ft)`;
+};
+
+const formatAltitudeFeet = (altitudeM) => {
+  if (altitudeM === null) return 'N/A';
+  const feet = Math.round(altitudeM * 3.28084);
+  return `${feet.toLocaleString()} ft`;
 };
 
 const formatVerticalRate = (rateMs) => {
@@ -41,11 +99,26 @@ const getPositionSource = (source) => {
   return sources[source] || `Unknown (${source})`;
 };
 
-// Memoized InfoRow component
+// Memoized InfoRow component with icon
+const InfoRowWithIcon = memo(({ icon, label, value, iconColor = "text-blue-400" }) => (
+  <div className="flex items-start gap-3">
+    <div className={`${iconColor} shrink-0 mt-0.5`}>
+      {icon}
+    </div>
+    <div className="flex-1 min-w-0">
+      <div className="text-xs text-zinc-400">{label}</div>
+      <div className="text-sm font-semibold text-white wrap-break-word">{value}</div>
+    </div>
+  </div>
+));
+
+InfoRowWithIcon.displayName = 'InfoRowWithIcon';
+
+// Memoized InfoRow component (for detailed sections)
 const InfoRow = memo(({ label, value }) => (
-  <div className="flex justify-between items-start">
-    <span className="text-sm text-zinc-400">{label}:</span>
-    <span className="text-sm font-semibold text-white text-right ml-2">{value}</span>
+  <div className="flex justify-between items-start gap-4">
+    <span className="text-sm text-zinc-400 shrink-0">{label}:</span>
+    <span className="text-sm font-semibold text-white text-right">{value}</span>
   </div>
 ));
 
@@ -58,8 +131,12 @@ const FlightInfoPanel = memo(function FlightInfoPanel({ flight, onClose }) {
     
     return {
       speed: formatSpeed(flight.velocity),
+      speedDetailed: formatSpeedDetailed(flight.velocity),
       baroAltitude: formatAltitude(flight.baro_altitude),
+      baroAltitudeFeet: formatAltitudeFeet(flight.baro_altitude),
+      baroAltitudeDetailed: formatAltitudeDetailed(flight.baro_altitude),
       geoAltitude: formatAltitude(flight.geo_altitude),
+      geoAltitudeDetailed: formatAltitudeDetailed(flight.geo_altitude),
       heading: formatHeading(flight.true_track),
       verticalRate: formatVerticalRate(flight.vertical_rate),
       lastContact: flight.last_contact ? new Date(flight.last_contact * 1000).toLocaleString() : 'N/A',
@@ -82,13 +159,16 @@ const FlightInfoPanel = memo(function FlightInfoPanel({ flight, onClose }) {
   if (!flight || !formattedValues) return null;
 
   return (
-    <div className="absolute bottom-4 right-4 z-1000 bg-zinc-900/95 backdrop-blur-sm text-white rounded-lg shadow-2xl border border-zinc-700 w-80 max-h-[80vh] overflow-y-auto">
-      {/* Header */}
-      <div className="sticky top-0 bg-zinc-800 px-4 py-3 rounded-t-lg border-b border-zinc-700 flex justify-between items-center">
-        <h3 className="text-lg font-bold">Flight Details</h3>
+    <div className="absolute bottom-4 left-4 z-1000 bg-slate-800/95 backdrop-blur-sm text-white rounded-xl shadow-2xl border border-slate-600/50 w-80 max-h-[80vh] overflow-y-auto">
+      {/* Header with Flight Number */}
+      <div className="sticky top-0 bg-slate-700/90 backdrop-blur-sm px-4 py-3 rounded-t-xl border-b border-slate-600/50 flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <PlaneIcon />
+          <h3 className="text-xl font-bold">{flight.callsign?.trim() || 'Unknown'}</h3>
+        </div>
         <button
           onClick={onClose}
-          className="text-zinc-400 hover:text-white transition-colors"
+          className="text-slate-300 hover:text-white transition-colors"
           aria-label="Close"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -99,29 +179,51 @@ const FlightInfoPanel = memo(function FlightInfoPanel({ flight, onClose }) {
 
       {/* Content */}
       <div className="p-4 space-y-4">
-        {/* Callsign */}
-        <div className="text-center pb-4 border-b border-zinc-700">
-          <p className="text-3xl font-bold text-blue-400">
-            {flight.callsign || 'Unknown'}
-          </p>
-          <p className="text-sm text-zinc-400 mt-1">
-            {flight.on_ground ? '🛬 On Ground' : '✈️ In Flight'}
-          </p>
+        {/* Status Badge */}
+        <div className="flex justify-center">
+          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+            flight.on_ground 
+              ? 'bg-gray-500/20 text-gray-300' 
+              : 'bg-green-500/20 text-green-300'
+          }`}>
+            {flight.on_ground ? 'On Ground' : 'In Flight'}
+          </span>
         </div>
 
-        {/* Basic Info */}
+        {/* Key Info with Icons */}
         <div className="space-y-3">
-          <InfoRow label="ICAO 24-bit Address" value={flight.icao24?.toUpperCase() || 'N/A'} />
-          <InfoRow label="Origin Country" value={flight.origin_country || 'N/A'} />
-          <InfoRow label="Squawk Code" value={flight.squawk || 'N/A'} />
-          <InfoRow label="SPI" value={formattedValues.spi} />
-          <InfoRow label="On Ground Status" value={flight.on_ground ? 'Yes' : 'No'} />
+          <InfoRowWithIcon 
+            icon={<IcaoIcon />}
+            label="ICAO24"
+            value={flight.icao24?.toUpperCase() || 'N/A'}
+            iconColor="text-pink-400"
+          />
+          <InfoRowWithIcon 
+            icon={<CountryIcon />}
+            label="Country"
+            value={flight.origin_country || 'N/A'}
+            iconColor="text-blue-400"
+          />
+          <InfoRowWithIcon 
+            icon={<SpeedIcon />}
+            label="Speed"
+            value={formattedValues.speed}
+            iconColor="text-orange-400"
+          />
+          <InfoRowWithIcon 
+            icon={<AltitudeIcon />}
+            label="Altitude"
+            value={formattedValues.baroAltitudeFeet}
+            iconColor="text-slate-300"
+          />
         </div>
 
-        {/* Position Info */}
-        <div className="pt-3 border-t border-zinc-700">
-          <h4 className="text-sm font-semibold text-zinc-400 mb-3 uppercase tracking-wide">Position</h4>
-          <div className="space-y-3">
+        {/* Detailed Info - Collapsible sections */}
+        <details className="pt-3 border-t border-slate-600/50">
+          <summary className="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wide cursor-pointer hover:text-white transition-colors">
+            Position Details
+          </summary>
+          <div className="space-y-2 mt-3 pl-2">
             <InfoRow 
               label="Latitude" 
               value={formattedValues.latitude || 'N/A'} 
@@ -132,22 +234,24 @@ const FlightInfoPanel = memo(function FlightInfoPanel({ flight, onClose }) {
             />
             <InfoRow 
               label="Barometric Altitude" 
-              value={formattedValues.baroAltitude} 
+              value={formattedValues.baroAltitudeDetailed} 
             />
             <InfoRow 
               label="Geometric Altitude" 
-              value={formattedValues.geoAltitude} 
+              value={formattedValues.geoAltitudeDetailed} 
             />
           </div>
-        </div>
+        </details>
 
         {/* Movement Info */}
-        <div className="pt-3 border-t border-zinc-700">
-          <h4 className="text-sm font-semibold text-zinc-400 mb-3 uppercase tracking-wide">Movement</h4>
-          <div className="space-y-3">
+        <details className="pt-3 border-t border-slate-600/50">
+          <summary className="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wide cursor-pointer hover:text-white transition-colors">
+            Movement Details
+          </summary>
+          <div className="space-y-2 mt-3 pl-2">
             <InfoRow 
               label="Ground Speed" 
-              value={formattedValues.speed} 
+              value={formattedValues.speedDetailed} 
             />
             <InfoRow 
               label="Heading" 
@@ -158,12 +262,26 @@ const FlightInfoPanel = memo(function FlightInfoPanel({ flight, onClose }) {
               value={formattedValues.verticalRate} 
             />
           </div>
-        </div>
+        </details>
+
+        {/* Additional Info */}
+        <details className="pt-3 border-t border-slate-600/50">
+          <summary className="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wide cursor-pointer hover:text-white transition-colors">
+            Additional Info
+          </summary>
+          <div className="space-y-2 mt-3 pl-2">
+            <InfoRow label="Squawk Code" value={flight.squawk || 'N/A'} />
+            <InfoRow label="SPI" value={formattedValues.spi} />
+            <InfoRow label="On Ground Status" value={flight.on_ground ? 'Yes' : 'No'} />
+          </div>
+        </details>
 
         {/* Technical Info */}
-        <div className="pt-3 border-t border-zinc-700">
-          <h4 className="text-sm font-semibold text-zinc-400 mb-3 uppercase tracking-wide">Technical</h4>
-          <div className="space-y-3">
+        <details className="pt-3 border-t border-slate-600/50">
+          <summary className="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wide cursor-pointer hover:text-white transition-colors">
+            Technical Data
+          </summary>
+          <div className="space-y-2 mt-3 pl-2">
             <InfoRow 
               label="Last Contact" 
               value={formattedValues.lastContact} 
@@ -189,12 +307,14 @@ const FlightInfoPanel = memo(function FlightInfoPanel({ flight, onClose }) {
               value={formattedValues.sensors} 
             />
           </div>
-        </div>
+        </details>
 
         {/* Raw Data Values */}
-        <div className="pt-3 border-t border-zinc-700">
-          <h4 className="text-sm font-semibold text-zinc-400 mb-3 uppercase tracking-wide">Raw Data</h4>
-          <div className="space-y-3">
+        <details className="pt-3 border-t border-slate-600/50">
+          <summary className="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wide cursor-pointer hover:text-white transition-colors">
+            Raw Data
+          </summary>
+          <div className="space-y-2 mt-3 pl-2">
             <InfoRow 
               label="Latitude (Precise)" 
               value={formattedValues.latitudeRaw} 
@@ -224,7 +344,7 @@ const FlightInfoPanel = memo(function FlightInfoPanel({ flight, onClose }) {
               value={flight.geo_altitude != null ? `${flight.geo_altitude.toFixed(2)} m` : 'N/A'} 
             />
           </div>
-        </div>
+        </details>
       </div>
     </div>
   );

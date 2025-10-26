@@ -277,7 +277,7 @@ export const AltitudeLegend = memo(() => {
 
   return (
     <div 
-      className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-zinc-900/95 backdrop-blur-sm text-white px-6 py-3 rounded-lg shadow-xl border border-zinc-700"
+      className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-zinc-900/95 backdrop-blur-sm text-white px-4 pt-2 pb-4 rounded-lg shadow-xl border border-zinc-700"
       style={{ zIndex: Z_INDEX.OVERLAY }}
     >
       <div className="flex items-center gap-4">
@@ -287,7 +287,7 @@ export const AltitudeLegend = memo(() => {
         </div>
         
         {/* Gradient bar */}
-        <div className="relative h-6 w-[540px]">
+        <div className="relative h-4 w-[540px]">
           {/* Background gradient */}
           <div 
             className="absolute inset-0 rounded"
@@ -316,7 +316,7 @@ export const AltitudeLegend = memo(() => {
                   
                   {/* Label */}
                   <div 
-                    className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-[10px] font-medium text-zinc-300 whitespace-nowrap"
+                    className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 text-[10px] font-medium text-zinc-300 whitespace-nowrap"
                   >
                     {marker.label}
                   </div>
